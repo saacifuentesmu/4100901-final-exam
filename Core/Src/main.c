@@ -21,6 +21,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+#include "ssd1306.h"
+#include "ssd1306_fonts.h"
 
 /* USER CODE END Includes */
 
@@ -45,6 +48,11 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+const uint8_t expected_id[] = "0813017";
+uint8_t received_id[7];
+uint8_t check_id = 0;
+
+uint8_t failed_counter = 0;
 
 /* USER CODE END PV */
 
@@ -59,6 +67,12 @@ static void MX_I2C1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void print_string(const char *string)
+{
+	ssd1306_SetCursor(10, 20);
+	ssd1306_WriteString((char *)string, Font_16x26, White);
+	ssd1306_UpdateScreen();
+}
 
 /* USER CODE END 0 */
 
@@ -93,6 +107,8 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  ssd1306_Init();
+  ssd1306_Fill(Black);
 
   /* USER CODE END 2 */
 
@@ -100,6 +116,28 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  /* 1 -> Show "Waiting" by default */
+	  print_string("Waiting");
+	  /* 2 -> Wait for a 7-bytes command to be received */
+	  HAL_UART_Receive(&huart2, received_id, 7, HAL_MAX_DELAY);
+	  if (memcmp(expected_id, received_id, 7) == 0) {
+		  /* 3.1 -> Show "Success" if the string is correct */
+		  print_string("Success");
+		  failed_counter = 0; // reset the failure counter if success
+		  HAL_Delay(3*1000);
+	  } else {
+		  failed_counter++;
+		  if (failed_counter < 3) {
+			  /* 3.2 -> Show "Failed" if the string is incorrect */
+			  print_string("Failed ");
+			  HAL_Delay(3*1000);
+		  } else {
+			  /* 4 -> Show "Blocked" if the string is incorrect 3 times */
+			  print_string("Blocked");
+			  failed_counter = 0;
+			  HAL_Delay(10*1000);
+		  }
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
